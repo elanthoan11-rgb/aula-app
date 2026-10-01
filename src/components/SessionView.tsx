@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react'
 import type { ClassSession, IncidentTypeId, SchoolClass } from '../types'
-import { INCIDENT_TYPES } from '../types'
-import { addParticipation, setStudentName, toggleIncident, todayISO } from '../lib/storage'
+import { INCIDENT_TYPES, MAX_INCIDENT_LEVEL } from '../types'
+import { addCleanupHelp, addParticipation, incrementIncident, resetIncident, setStudentName, todayISO } from '../lib/storage'
 import { formatDate } from '../lib/dates'
 import PrintableSession from './PrintableSession'
 
@@ -24,16 +24,29 @@ export default function SessionView({
 
   const students = useMemo(() => Array.from({ length: cls.studentCount }, (_, i) => i + 1), [cls.studentCount])
 
-  const clearCount = students.filter((n) => !(session.records[n]?.length > 0)).length
+  const studentHasIncidents = (n: number) => Object.keys(session.records[n] ?? {}).length > 0
+  const clearCount = students.filter((n) => !studentHasIncidents(n)).length
 
-  function handleToggle(studentNumber: number, incidentId: IncidentTypeId) {
-    const updated = toggleIncident(session.id, studentNumber, incidentId)
+  function handleIncrement(studentNumber: number, incidentId: IncidentTypeId) {
+    const updated = incrementIncident(session.id, studentNumber, incidentId)
+    if (updated) setSession(updated)
+    onSessionChanged()
+  }
+
+  function handleReset(studentNumber: number, incidentId: IncidentTypeId) {
+    const updated = resetIncident(session.id, studentNumber, incidentId)
     if (updated) setSession(updated)
     onSessionChanged()
   }
 
   function handleParticipation(studentNumber: number, delta: number) {
     const updated = addParticipation(session.id, studentNumber, delta)
+    if (updated) setSession(updated)
+    onSessionChanged()
+  }
+
+  function handleCleanupHelp(studentNumber: number, delta: number) {
+    const updated = addCleanupHelp(session.id, studentNumber, delta)
     if (updated) setSession(updated)
     onSessionChanged()
   }
@@ -54,11 +67,11 @@ export default function SessionView({
     setEditingNumber(null)
   }
 
-  const visibleStudents = onlyWithIncidents ? students.filter((n) => session.records[n]?.length > 0) : students
+  const visibleStudents = onlyWithIncidents ? students.filter((n) => studentHasIncidents(n)) : students
 
   return (
     <>
-    <div className="mx-auto max-w-2xl px-4 py-6 pb-16 print:hidden">
+    <div className="mx-auto max-w-4xl px-4 py-6 pb-16 print:hidden">
       <header className="mb-4">
         <button
           type="button"
@@ -103,10 +116,11 @@ export default function SessionView({
 
       <ul className="flex flex-col gap-2">
         {visibleStudents.map((n) => {
-          const active = session.records[n] ?? []
-          const hasIncidents = active.length > 0
+          const active = session.records[n] ?? {}
+          const hasIncidents = Object.keys(active).length > 0
           const name = studentNames[n]
           const participationCount = session.participation[n] ?? 0
+          const cleanupHelpCount = session.cleanupHelp[n] ?? 0
 
           return (
             <li
@@ -155,23 +169,44 @@ export default function SessionView({
 
               <div className="mb-2 flex flex-wrap gap-1.5">
                 {INCIDENT_TYPES.map((type) => {
-                  const isActive = active.includes(type.id)
+                  const count = active[type.id] ?? 0
+                  const level = Math.min(count, MAX_INCIDENT_LEVEL)
+                  const levelClasses =
+                    level === 0
+                      ? 'border-slate-200 bg-slate-50 text-slate-600 hover:border-slate-300 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-300'
+                      : level === 1
+                        ? 'border-yellow-400 bg-yellow-400 text-slate-900'
+                        : level === 2
+                          ? 'border-orange-700 bg-orange-700 text-white'
+                          : 'border-rose-600 bg-rose-600 text-white'
+
                   return (
-                    <button
-                      key={type.id}
-                      type="button"
-                      onClick={() => handleToggle(n, type.id)}
-                      className={`flex items-center gap-1 rounded-md border px-2 py-1.5 text-xs font-medium transition-colors ${
-                        isActive
-                          ? 'border-rose-500 bg-rose-500 text-white'
-                          : 'border-slate-200 bg-slate-50 text-slate-600 hover:border-slate-300 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-300'
-                      }`}
-                      aria-pressed={isActive}
-                      title={type.description}
-                    >
-                      <span>{type.icon}</span>
-                      <span>{type.label}</span>
-                    </button>
+                    <span key={type.id} className="inline-flex overflow-hidden rounded-md">
+                      <button
+                        type="button"
+                        onClick={() => handleIncrement(n, type.id)}
+                        className={`flex items-center gap-1 border px-2 py-1.5 text-xs font-medium transition-colors ${levelClasses} ${
+                          count > 0 ? 'border-r-black/10 dark:border-r-white/20' : ''
+                        }`}
+                        aria-pressed={count > 0}
+                        title={count > 0 ? `${type.description} · ${count} ${count === 1 ? 'vez' : 'veces'}` : type.description}
+                      >
+                        <span>{type.icon}</span>
+                        <span>{type.label}</span>
+                        {count > 1 && <span className="font-bold">×{count}</span>}
+                      </button>
+                      {count > 0 && (
+                        <button
+                          type="button"
+                          onClick={() => handleReset(n, type.id)}
+                          className={`flex items-center justify-center border px-1.5 text-xs font-bold ${levelClasses}`}
+                          aria-label={`Quitar incidencia ${type.label} de estudiante ${n}`}
+                          title="Quitar"
+                        >
+                          ✕
+                        </button>
+                      )}
+                    </span>
                   )
                 })}
               </div>
@@ -195,6 +230,30 @@ export default function SessionView({
                   onClick={() => handleParticipation(n, 1)}
                   className="flex h-7 w-7 items-center justify-center rounded-md border border-emerald-500 bg-emerald-500 text-white hover:bg-emerald-600"
                   aria-label={`Sumar participación a estudiante ${n}`}
+                >
+                  +
+                </button>
+              </div>
+
+              <div className="flex items-center gap-2 border-t border-slate-100 dark:border-slate-700 pt-2">
+                <span className="flex-1 text-xs font-medium text-slate-500 dark:text-slate-400">🧹 Ayuda con la limpieza</span>
+                <button
+                  type="button"
+                  onClick={() => handleCleanupHelp(n, -1)}
+                  disabled={!cleanupHelpCount}
+                  className="flex h-7 w-7 items-center justify-center rounded-md border border-slate-200 dark:border-slate-600 text-slate-500 dark:text-slate-300 disabled:opacity-30"
+                  aria-label={`Restar ayuda con la limpieza a estudiante ${n}`}
+                >
+                  −
+                </button>
+                <span className="min-w-[2rem] rounded-md bg-sky-50 dark:bg-sky-950/40 px-2 py-1 text-center text-sm font-bold tabular-nums text-sky-700 dark:text-sky-300">
+                  {cleanupHelpCount}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => handleCleanupHelp(n, 1)}
+                  className="flex h-7 w-7 items-center justify-center rounded-md border border-sky-500 bg-sky-500 text-white hover:bg-sky-600"
+                  aria-label={`Sumar ayuda con la limpieza a estudiante ${n}`}
                 >
                   +
                 </button>

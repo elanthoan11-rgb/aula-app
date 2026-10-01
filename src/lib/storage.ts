@@ -1,4 +1,4 @@
-import type { ClassSession, IncidentTypeId, SchoolClass } from '../types'
+import type { ClassSession, IncidentCounts, IncidentTypeId, SchoolClass } from '../types'
 
 const CLASSES_KEY = 'aula.classes'
 const SESSIONS_KEY = 'aula.sessions'
@@ -82,8 +82,28 @@ export function deleteClass(id: string): void {
   saveSessions(getSessions().filter((s) => s.classId !== id))
 }
 
+function normalizeRecords(records: Record<number, IncidentTypeId[] | IncidentCounts> | undefined): Record<number, IncidentCounts> {
+  const result: Record<number, IncidentCounts> = {}
+  for (const key of Object.keys(records ?? {})) {
+    const value = (records as Record<string, IncidentTypeId[] | IncidentCounts>)[key]
+    if (Array.isArray(value)) {
+      const counts: IncidentCounts = {}
+      for (const id of value) counts[id] = (counts[id] ?? 0) + 1
+      result[Number(key)] = counts
+    } else {
+      result[Number(key)] = value
+    }
+  }
+  return result
+}
+
 function normalizeSession(session: ClassSession): ClassSession {
-  return { ...session, participation: session.participation ?? {} }
+  return {
+    ...session,
+    records: normalizeRecords(session.records),
+    participation: session.participation ?? {},
+    cleanupHelp: session.cleanupHelp ?? {},
+  }
 }
 
 function getSessions(): ClassSession[] {
@@ -116,6 +136,7 @@ export function getOrCreateTodaySession(classId: string): ClassSession {
     createdAt: new Date().toISOString(),
     records: {},
     participation: {},
+    cleanupHelp: {},
   }
   saveSessions([...getSessions(), session])
   return session
@@ -125,21 +146,36 @@ export function deleteSession(id: string): void {
   saveSessions(getSessions().filter((s) => s.id !== id))
 }
 
-export function toggleIncident(sessionId: string, studentNumber: number, incidentId: IncidentTypeId): ClassSession | undefined {
+export function incrementIncident(sessionId: string, studentNumber: number, incidentId: IncidentTypeId): ClassSession | undefined {
   const sessions = getSessions()
   const idx = sessions.findIndex((s) => s.id === sessionId)
   if (idx === -1) return undefined
 
   const session = sessions[idx]
-  const current = session.records[studentNumber] ?? []
-  const has = current.includes(incidentId)
-  const next = has ? current.filter((i) => i !== incidentId) : [...current, incidentId]
+  const studentRecord = { ...(session.records[studentNumber] ?? {}) }
+  studentRecord[incidentId] = (studentRecord[incidentId] ?? 0) + 1
+
+  const records = { ...session.records, [studentNumber]: studentRecord }
+  const updated: ClassSession = { ...session, records }
+  sessions[idx] = updated
+  saveSessions(sessions)
+  return updated
+}
+
+export function resetIncident(sessionId: string, studentNumber: number, incidentId: IncidentTypeId): ClassSession | undefined {
+  const sessions = getSessions()
+  const idx = sessions.findIndex((s) => s.id === sessionId)
+  if (idx === -1) return undefined
+
+  const session = sessions[idx]
+  const studentRecord = { ...(session.records[studentNumber] ?? {}) }
+  delete studentRecord[incidentId]
 
   const records = { ...session.records }
-  if (next.length === 0) {
+  if (Object.keys(studentRecord).length === 0) {
     delete records[studentNumber]
   } else {
-    records[studentNumber] = next
+    records[studentNumber] = studentRecord
   }
 
   const updated: ClassSession = { ...session, records }
@@ -165,6 +201,28 @@ export function addParticipation(sessionId: string, studentNumber: number, delta
   }
 
   const updated: ClassSession = { ...session, participation }
+  sessions[idx] = updated
+  saveSessions(sessions)
+  return updated
+}
+
+export function addCleanupHelp(sessionId: string, studentNumber: number, delta: number): ClassSession | undefined {
+  const sessions = getSessions()
+  const idx = sessions.findIndex((s) => s.id === sessionId)
+  if (idx === -1) return undefined
+
+  const session = sessions[idx]
+  const current = session.cleanupHelp[studentNumber] ?? 0
+  const next = Math.max(0, current + delta)
+
+  const cleanupHelp = { ...session.cleanupHelp }
+  if (next === 0) {
+    delete cleanupHelp[studentNumber]
+  } else {
+    cleanupHelp[studentNumber] = next
+  }
+
+  const updated: ClassSession = { ...session, cleanupHelp }
   sessions[idx] = updated
   saveSessions(sessions)
   return updated

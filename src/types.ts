@@ -8,6 +8,9 @@ export type IncidentTypeId =
   | 'tarde'
   | 'salio'
   | 'basura'
+  | 'otra_asignatura'
+  | 'juego_brusco'
+  | 'lenguaje_inapropiado'
 
 export interface IncidentType {
   id: IncidentTypeId
@@ -26,6 +29,9 @@ export const INCIDENT_TYPES: IncidentType[] = [
   { id: 'se_paro', label: 'Se paró', icon: '🚶', description: 'Se paró sin permiso' },
   { id: 'salio', label: 'Salió', icon: '🚪', description: 'Salió sin permiso' },
   { id: 'basura', label: 'Basura', icon: '🗑️', description: 'Tiró basura' },
+  { id: 'otra_asignatura', label: 'Otra tarea', icon: '📚', description: 'Trabajó en otra asignatura durante la clase' },
+  { id: 'juego_brusco', label: 'Juego brusco', icon: '🤜', description: 'Jugó con golpes con otro estudiante' },
+  { id: 'lenguaje_inapropiado', label: 'Lenguaje inapropiado', icon: '🤬', description: 'Dijo palabras inapropiadas u obscenas' },
 ]
 
 export function incidentType(id: IncidentTypeId): IncidentType {
@@ -67,13 +73,13 @@ export const RUBRIC_CRITERIA: RubricCriterion[] = [
     id: 'responsabilidad',
     title: 'Responsabilidad académica',
     description: 'Realiza el trabajo asignado',
-    incidentIds: ['no_trabajo'],
+    incidentIds: ['no_trabajo', 'otra_asignatura'],
   },
   {
     id: 'respeto',
     title: 'Respeto y convivencia',
     description: 'Respeta el desarrollo de la clase',
-    incidentIds: ['hablo', 'interrupcion'],
+    incidentIds: ['hablo', 'interrupcion', 'juego_brusco', 'lenguaje_inapropiado'],
   },
   {
     id: 'orden',
@@ -83,8 +89,12 @@ export const RUBRIC_CRITERIA: RubricCriterion[] = [
   },
 ]
 
-export function criterionAchieved(criterion: RubricCriterion, incidents: IncidentTypeId[]): boolean {
-  return !criterion.incidentIds.some((id) => incidents.includes(id))
+export type IncidentCounts = Partial<Record<IncidentTypeId, number>>
+
+export const MAX_INCIDENT_LEVEL = 3
+
+export function criterionAchieved(criterion: RubricCriterion, incidents: IncidentCounts): boolean {
+  return !criterion.incidentIds.some((id) => (incidents[id] ?? 0) > 0)
 }
 
 export interface ClassSession {
@@ -92,6 +102,7 @@ export interface ClassSession {
   classId: string
   date: string
   createdAt: string
-  records: Record<number, IncidentTypeId[]>
+  records: Record<number, IncidentCounts>
   participation: Record<number, number>
+  cleanupHelp: Record<number, number>
 }

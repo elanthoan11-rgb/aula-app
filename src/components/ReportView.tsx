@@ -9,6 +9,7 @@ interface StudentStats {
   total: number
   byType: Record<IncidentTypeId, number>
   participation: number
+  cleanupHelp: number
 }
 
 export default function ReportView({ cls, onBack }: { cls: SchoolClass; onBack: () => void }) {
@@ -20,13 +21,15 @@ export default function ReportView({ cls, onBack }: { cls: SchoolClass; onBack: 
       .map((number) => {
         const byType = Object.fromEntries(INCIDENT_TYPES.map((t) => [t.id, 0])) as Record<IncidentTypeId, number>
         let participation = 0
+        let cleanupHelp = 0
         for (const session of sessions) {
-          const incidents = session.records[number] ?? []
-          for (const id of incidents) byType[id] += 1
+          const incidents = session.records[number] ?? {}
+          for (const id of Object.keys(incidents) as IncidentTypeId[]) byType[id] += incidents[id] ?? 0
           participation += session.participation[number] ?? 0
+          cleanupHelp += session.cleanupHelp[number] ?? 0
         }
         const total = Object.values(byType).reduce((a, b) => a + b, 0)
-        return { number, name: cls.studentNames[number], total, byType, participation }
+        return { number, name: cls.studentNames[number], total, byType, participation, cleanupHelp }
       })
       .sort((a, b) => b.total - a.total || a.number - b.number)
   }, [cls, sessions])
@@ -34,13 +37,14 @@ export default function ReportView({ cls, onBack }: { cls: SchoolClass; onBack: 
   const totalIncidents = stats.reduce((sum, s) => sum + s.total, 0)
 
   function handleExportCSV() {
-    const header = ['Número', 'Nombre', ...INCIDENT_TYPES.map((t) => t.label), 'Total', 'Participación activa']
+    const header = ['Número', 'Nombre', ...INCIDENT_TYPES.map((t) => t.label), 'Total', 'Participación activa', 'Ayuda con la limpieza']
     const rows = stats.map((s) => [
       String(s.number),
       s.name ?? '',
       ...INCIDENT_TYPES.map((t) => String(s.byType[t.id])),
       String(s.total),
       String(s.participation),
+      String(s.cleanupHelp),
     ])
     const csv = [header, ...rows].map((r) => r.map((cell) => `"${cell.replace(/"/g, '""')}"`).join(',')).join('\n')
     const blob = new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8' })
@@ -53,7 +57,7 @@ export default function ReportView({ cls, onBack }: { cls: SchoolClass; onBack: 
   }
 
   return (
-    <div className="mx-auto max-w-4xl px-4 py-6">
+    <div className="mx-auto max-w-6xl px-4 py-6">
       <header className="mb-6">
         <button
           type="button"
@@ -99,6 +103,7 @@ export default function ReportView({ cls, onBack }: { cls: SchoolClass; onBack: 
                 ))}
                 <th className="px-3 py-2 text-center font-semibold text-slate-600 dark:text-slate-300">Total</th>
                 <th className="px-3 py-2 text-center font-semibold text-slate-600 dark:text-slate-300">🙋</th>
+                <th className="px-3 py-2 text-center font-semibold text-slate-600 dark:text-slate-300">🧹</th>
               </tr>
             </thead>
             <tbody>
@@ -125,6 +130,9 @@ export default function ReportView({ cls, onBack }: { cls: SchoolClass; onBack: 
                   </td>
                   <td className="px-3 py-2 text-center font-semibold tabular-nums text-emerald-600 dark:text-emerald-400">
                     {s.participation || ''}
+                  </td>
+                  <td className="px-3 py-2 text-center font-semibold tabular-nums text-sky-600 dark:text-sky-400">
+                    {s.cleanupHelp || ''}
                   </td>
                 </tr>
               ))}

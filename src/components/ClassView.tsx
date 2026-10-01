@@ -7,7 +7,10 @@ import { formatDate } from '../lib/dates'
 const ImportStudentsModal = lazy(() => import('./ImportStudentsModal'))
 
 function sessionIncidentCount(session: ClassSession): number {
-  return Object.values(session.records).reduce((sum, list) => sum + list.length, 0)
+  return Object.values(session.records).reduce(
+    (sum, counts) => sum + Object.values(counts).reduce((s, c) => s + (c ?? 0), 0),
+    0,
+  )
 }
 
 function sessionStudentsWithIncidents(session: ClassSession): number {
@@ -55,7 +58,7 @@ export default function ClassView({
   }
 
   return (
-    <div className="mx-auto max-w-2xl px-4 py-6">
+    <div className="mx-auto max-w-4xl px-4 py-6">
       <header className="mb-6">
         <button
           type="button"

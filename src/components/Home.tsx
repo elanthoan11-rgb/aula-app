@@ -70,7 +70,7 @@ export default function Home({
   }
 
   return (
-    <div className="mx-auto max-w-2xl px-4 py-6">
+    <div className="mx-auto max-w-4xl px-4 py-6">
       {classes.length > 0 && (
         <section className="mb-8">
           <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-slate-400 dark:text-slate-500">
