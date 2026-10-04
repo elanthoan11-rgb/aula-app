@@ -51,6 +51,18 @@ export default function SessionView({
     onSessionChanged()
   }
 
+  function handlePrint() {
+    const safeClassName = cls.name.replace(/[\\/:*?"<>|]+/g, '').trim()
+    const originalTitle = document.title
+    document.title = `${safeClassName} - ${session.date}`
+    const restoreTitle = () => {
+      document.title = originalTitle
+      window.removeEventListener('afterprint', restoreTitle)
+    }
+    window.addEventListener('afterprint', restoreTitle)
+    window.print()
+  }
+
   function startRename(studentNumber: number) {
     setEditingNumber(studentNumber)
     setNameDraft(studentNames[studentNumber] ?? '')
@@ -96,7 +108,7 @@ export default function SessionView({
           </div>
           <button
             type="button"
-            onClick={() => window.print()}
+            onClick={handlePrint}
             className="shrink-0 rounded-lg border border-slate-300 dark:border-slate-600 px-3 py-2 text-sm font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800"
           >
             🖨️ Imprimir / PDF

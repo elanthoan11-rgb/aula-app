@@ -11,6 +11,7 @@ export type IncidentTypeId =
   | 'otra_asignatura'
   | 'juego_brusco'
   | 'lenguaje_inapropiado'
+  | 'maquillaje'
 
 export interface IncidentType {
   id: IncidentTypeId
@@ -32,6 +33,7 @@ export const INCIDENT_TYPES: IncidentType[] = [
   { id: 'otra_asignatura', label: 'Otra tarea', icon: '📚', description: 'Trabajó en otra asignatura durante la clase' },
   { id: 'juego_brusco', label: 'Juego brusco', icon: '🤜', description: 'Jugó con golpes con otro estudiante' },
   { id: 'lenguaje_inapropiado', label: 'Lenguaje inapropiado', icon: '🤬', description: 'Dijo palabras inapropiadas u obscenas' },
+  { id: 'maquillaje', label: 'Maquillaje', icon: '💄', description: 'Se estaba maquillando en clase' },
 ]
 
 export function incidentType(id: IncidentTypeId): IncidentType {
@@ -73,7 +75,7 @@ export const RUBRIC_CRITERIA: RubricCriterion[] = [
     id: 'responsabilidad',
     title: 'Responsabilidad académica',
     description: 'Realiza el trabajo asignado',
-    incidentIds: ['no_trabajo', 'otra_asignatura'],
+    incidentIds: ['no_trabajo', 'otra_asignatura', 'maquillaje'],
   },
   {
     id: 'respeto',
