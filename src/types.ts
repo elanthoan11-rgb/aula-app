@@ -12,6 +12,7 @@ export type IncidentTypeId =
   | 'juego_brusco'
   | 'lenguaje_inapropiado'
   | 'maquillaje'
+  | 'ausente'
 
 export interface IncidentType {
   id: IncidentTypeId
@@ -34,6 +35,7 @@ export const INCIDENT_TYPES: IncidentType[] = [
   { id: 'juego_brusco', label: 'Juego brusco', icon: '🤜', description: 'Jugó con golpes con otro estudiante' },
   { id: 'lenguaje_inapropiado', label: 'Lenguaje inapropiado', icon: '🤬', description: 'Dijo palabras inapropiadas u obscenas' },
   { id: 'maquillaje', label: 'Maquillaje', icon: '💄', description: 'Se estaba maquillando en clase' },
+  { id: 'ausente', label: 'Ausente', icon: '🚫', description: 'No vino a clases' },
 ]
 
 export function incidentType(id: IncidentTypeId): IncidentType {
@@ -69,7 +71,7 @@ export const RUBRIC_CRITERIA: RubricCriterion[] = [
     id: 'permanencia',
     title: 'Permanencia y puntualidad',
     description: 'Llega a tiempo y permanece en su lugar',
-    incidentIds: ['tarde', 'se_paro', 'salio'],
+    incidentIds: ['tarde', 'se_paro', 'salio', 'ausente'],
   },
   {
     id: 'responsabilidad',

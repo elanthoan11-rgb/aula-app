@@ -1,10 +1,11 @@
 import { lazy, Suspense, useState } from 'react'
 import type { ClassSession, SchoolClass } from '../types'
 import { INCIDENT_TYPES } from '../types'
-import { getOrCreateTodaySession, getSessionsForClass, todayISO, updateClass } from '../lib/storage'
+import { addStudentToClass, getOrCreateTodaySession, getSessionsForClass, todayISO, updateClass } from '../lib/storage'
 import { formatDate } from '../lib/dates'
 
 const ImportStudentsModal = lazy(() => import('./ImportStudentsModal'))
+const AddStudentModal = lazy(() => import('./AddStudentModal'))
 
 function sessionIncidentCount(session: ClassSession): number {
   return Object.values(session.records).reduce(
@@ -33,6 +34,7 @@ export default function ClassView({
   const sessions = getSessionsForClass(cls.id)
   const hasToday = sessions.some((s) => s.date === todayISO())
   const [showImport, setShowImport] = useState(false)
+  const [showAddStudent, setShowAddStudent] = useState(false)
 
   function handleStartToday() {
     const session = getOrCreateTodaySession(cls.id)
@@ -57,6 +59,12 @@ export default function ClassView({
     onClassChanged()
   }
 
+  function handleAddStudent(input: { name: string; number: number }) {
+    addStudentToClass(cls.id, input)
+    setShowAddStudent(false)
+    onClassChanged()
+  }
+
   return (
     <div className="mx-auto max-w-4xl px-4 py-6">
       <header className="mb-6">
@@ -75,6 +83,13 @@ export default function ClassView({
             </p>
           </div>
           <div className="flex shrink-0 gap-2">
+            <button
+              type="button"
+              onClick={() => setShowAddStudent(true)}
+              className="rounded-lg border border-slate-300 dark:border-slate-600 px-3 py-2 text-sm font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800"
+            >
+              ➕ Estudiante
+            </button>
             <button
               type="button"
               onClick={() => setShowImport(true)}
@@ -151,6 +166,12 @@ export default function ClassView({
       {showImport && (
         <Suspense fallback={null}>
           <ImportStudentsModal onClose={() => setShowImport(false)} onImport={handleImport} />
+        </Suspense>
+      )}
+
+      {showAddStudent && (
+        <Suspense fallback={null}>
+          <AddStudentModal studentCount={cls.studentCount} onClose={() => setShowAddStudent(false)} onAdd={handleAddStudent} />
         </Suspense>
       )}
     </div>

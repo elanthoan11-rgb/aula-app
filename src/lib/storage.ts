@@ -77,6 +77,41 @@ export function setStudentName(classId: string, studentNumber: number, name: str
   updateClass(classId, { studentNames })
 }
 
+function shiftKeysFrom<T>(record: Record<number, T>, insertAt: number): Record<number, T> {
+  const result: Record<number, T> = {}
+  for (const key of Object.keys(record)) {
+    const n = Number(key)
+    result[n >= insertAt ? n + 1 : n] = record[n]
+  }
+  return result
+}
+
+export function addStudentToClass(classId: string, input: { name: string; number: number }): SchoolClass | undefined {
+  const cls = getClass(classId)
+  if (!cls) return undefined
+
+  const insertAt = Math.min(Math.max(1, Math.round(input.number)), cls.studentCount + 1)
+
+  const sessions = getSessions().map((s) =>
+    s.classId === classId
+      ? {
+          ...s,
+          records: shiftKeysFrom(s.records, insertAt),
+          participation: shiftKeysFrom(s.participation, insertAt),
+          cleanupHelp: shiftKeysFrom(s.cleanupHelp, insertAt),
+        }
+      : s,
+  )
+  saveSessions(sessions)
+
+  const studentNames = shiftKeysFrom(cls.studentNames, insertAt)
+  if (input.name.trim()) studentNames[insertAt] = input.name.trim()
+
+  const updated: SchoolClass = { ...cls, studentCount: cls.studentCount + 1, studentNames }
+  saveClasses(getClasses().map((c) => (c.id === classId ? updated : c)))
+  return updated
+}
+
 export function deleteClass(id: string): void {
   saveClasses(getClasses().filter((c) => c.id !== id))
   saveSessions(getSessions().filter((s) => s.classId !== id))
