@@ -1,4 +1,4 @@
-import { useMemo } from 'react'
+import { useMemo, useState } from 'react'
 import type { IncidentTypeId, SchoolClass } from '../types'
 import { INCIDENT_TYPES } from '../types'
 import { getSessionsForClass } from '../lib/storage'
@@ -28,6 +28,13 @@ function positiveCellClasses(count: number): string {
 
 export default function IncidentSummaryView({ cls, onBack }: { cls: SchoolClass; onBack: () => void }) {
   const sessions = getSessionsForClass(cls.id)
+  const [startDate, setStartDate] = useState('')
+  const [endDate, setEndDate] = useState('')
+
+  const filteredSessions = useMemo(
+    () => sessions.filter((s) => (!startDate || s.date >= startDate) && (!endDate || s.date <= endDate)),
+    [sessions, startDate, endDate],
+  )
 
   const stats: StudentIncidentStats[] = useMemo(() => {
     const students = Array.from({ length: cls.studentCount }, (_, i) => i + 1)
@@ -35,7 +42,7 @@ export default function IncidentSummaryView({ cls, onBack }: { cls: SchoolClass;
       const byType = Object.fromEntries(INCIDENT_TYPES.map((t) => [t.id, 0])) as Record<IncidentTypeId, number>
       let participation = 0
       let cleanupHelp = 0
-      for (const session of sessions) {
+      for (const session of filteredSessions) {
         const incidents = session.records[number] ?? {}
         for (const id of Object.keys(incidents) as IncidentTypeId[]) byType[id] += incidents[id] ?? 0
         participation += session.participation[number] ?? 0
@@ -44,7 +51,7 @@ export default function IncidentSummaryView({ cls, onBack }: { cls: SchoolClass;
       const total = Object.values(byType).reduce((a, b) => a + b, 0)
       return { number, name: cls.studentNames[number], byType, total, participation, cleanupHelp }
     })
-  }, [cls, sessions])
+  }, [cls, filteredSessions])
 
   const incidentStats = stats.filter((s) => s.total > 0)
   const positiveStats = stats.filter((s) => s.participation > 0 || s.cleanupHelp > 0)
@@ -60,14 +67,51 @@ export default function IncidentSummaryView({ cls, onBack }: { cls: SchoolClass;
           ← {cls.name}
         </button>
         <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100">Resumen de incidencias</h1>
-        <p className="text-sm text-slate-500 dark:text-slate-400">
-          {sessions.length} sesión{sessions.length === 1 ? '' : 'es'} registrada{sessions.length === 1 ? '' : 's'} · ✓ = sin incidencias de ese tipo
+        <p className="mb-3 text-sm text-slate-500 dark:text-slate-400">
+          {filteredSessions.length} de {sessions.length} sesión{sessions.length === 1 ? '' : 'es'} · ✓ = sin incidencias de ese tipo
         </p>
+
+        <div className="flex flex-wrap items-end gap-3">
+          <label className="flex flex-col gap-1 text-xs font-medium text-slate-600 dark:text-slate-300">
+            Desde
+            <input
+              type="date"
+              value={startDate}
+              onChange={(e) => setStartDate(e.target.value)}
+              className="rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 px-2 py-1.5 text-sm text-slate-900 dark:text-slate-100 outline-none focus:border-indigo-500"
+            />
+          </label>
+          <label className="flex flex-col gap-1 text-xs font-medium text-slate-600 dark:text-slate-300">
+            Hasta
+            <input
+              type="date"
+              value={endDate}
+              onChange={(e) => setEndDate(e.target.value)}
+              className="rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 px-2 py-1.5 text-sm text-slate-900 dark:text-slate-100 outline-none focus:border-indigo-500"
+            />
+          </label>
+          {(startDate || endDate) && (
+            <button
+              type="button"
+              onClick={() => {
+                setStartDate('')
+                setEndDate('')
+              }}
+              className="rounded-lg border border-slate-300 dark:border-slate-600 px-3 py-1.5 text-sm font-medium text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800"
+            >
+              ✕ Limpiar fechas
+            </button>
+          )}
+        </div>
       </header>
 
       {sessions.length === 0 ? (
         <div className="rounded-xl border border-dashed border-slate-300 dark:border-slate-700 p-8 text-center text-slate-500 dark:text-slate-400">
           Todavía no hay sesiones registradas para generar un resumen.
+        </div>
+      ) : filteredSessions.length === 0 ? (
+        <div className="rounded-xl border border-dashed border-slate-300 dark:border-slate-700 p-8 text-center text-slate-500 dark:text-slate-400">
+          No hay sesiones registradas en el rango de fechas seleccionado.
         </div>
       ) : (
         <>
