@@ -13,6 +13,8 @@ export type IncidentTypeId =
   | 'lenguaje_inapropiado'
   | 'maquillaje'
   | 'ausente'
+  | 'comer'
+  | 'peinarse'
 
 export interface IncidentType {
   id: IncidentTypeId
@@ -36,6 +38,8 @@ export const INCIDENT_TYPES: IncidentType[] = [
   { id: 'lenguaje_inapropiado', label: 'Lenguaje inapropiado', icon: '🤬', description: 'Dijo palabras inapropiadas u obscenas' },
   { id: 'maquillaje', label: 'Maquillaje', icon: '💄', description: 'Se estaba maquillando en clase' },
   { id: 'ausente', label: 'Ausente', icon: '🚫', description: 'No vino a clases' },
+  { id: 'comer', label: 'Comer', icon: '🍔', description: 'Comió dentro del aula' },
+  { id: 'peinarse', label: 'Peinarse', icon: '💇', description: 'Se estaba peinando en clase' },
 ]
 
 export function incidentType(id: IncidentTypeId): IncidentType {
@@ -77,7 +81,7 @@ export const RUBRIC_CRITERIA: RubricCriterion[] = [
     id: 'responsabilidad',
     title: 'Responsabilidad académica',
     description: 'Realiza el trabajo asignado',
-    incidentIds: ['no_trabajo', 'otra_asignatura', 'maquillaje'],
+    incidentIds: ['no_trabajo', 'otra_asignatura', 'maquillaje', 'comer', 'peinarse'],
   },
   {
     id: 'respeto',
@@ -109,4 +113,8 @@ export interface ClassSession {
   records: Record<number, IncidentCounts>
   participation: Record<number, number>
   cleanupHelp: Record<number, number>
+  comments: Record<number, string>
+  status?: 'pending' | 'completed'
+  pendingNote?: string
+  topic?: string
 }

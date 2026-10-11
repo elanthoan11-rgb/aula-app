@@ -5,12 +5,14 @@ import Home from './components/Home'
 import ClassView from './components/ClassView'
 import SessionView from './components/SessionView'
 import ReportView from './components/ReportView'
+import IncidentSummaryView from './components/IncidentSummaryView'
 
 type View =
   | { screen: 'home' }
   | { screen: 'class'; classId: string }
   | { screen: 'session'; classId: string; sessionId: string }
   | { screen: 'report'; classId: string }
+  | { screen: 'incidentSummary'; classId: string }
 
 export default function App() {
   const [classes, setClasses] = useState<SchoolClass[]>(() => getClasses())
@@ -50,6 +52,7 @@ export default function App() {
         }}
         onOpenSession={(sessionId) => setView({ screen: 'session', classId: cls.id, sessionId })}
         onOpenReport={() => setView({ screen: 'report', classId: cls.id })}
+        onOpenIncidentSummary={() => setView({ screen: 'incidentSummary', classId: cls.id })}
         onClassChanged={refreshClasses}
       />
     )
@@ -57,6 +60,10 @@ export default function App() {
 
   if (view.screen === 'report') {
     return <ReportView cls={cls} onBack={() => setView({ screen: 'class', classId: cls.id })} />
+  }
+
+  if (view.screen === 'incidentSummary') {
+    return <IncidentSummaryView cls={cls} onBack={() => setView({ screen: 'class', classId: cls.id })} />
   }
 
   const session = getSession(view.sessionId)

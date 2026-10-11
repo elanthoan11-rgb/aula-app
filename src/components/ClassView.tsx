@@ -23,12 +23,14 @@ export default function ClassView({
   onBack,
   onOpenSession,
   onOpenReport,
+  onOpenIncidentSummary,
   onClassChanged,
 }: {
   cls: SchoolClass
   onBack: () => void
   onOpenSession: (sessionId: string) => void
   onOpenReport: () => void
+  onOpenIncidentSummary: () => void
   onClassChanged: () => void
 }) {
   const sessions = getSessionsForClass(cls.id)
@@ -82,7 +84,14 @@ export default function ClassView({
               {cls.grade} · {cls.studentCount} estudiantes
             </p>
           </div>
-          <div className="flex shrink-0 gap-2">
+          <div className="flex shrink-0 flex-wrap justify-end gap-2">
+            <button
+              type="button"
+              onClick={onOpenIncidentSummary}
+              className="rounded-lg border border-slate-300 dark:border-slate-600 px-3 py-2 text-sm font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800"
+            >
+              📋 Resumen de incidencias
+            </button>
             <button
               type="button"
               onClick={() => setShowAddStudent(true)}
@@ -142,6 +151,22 @@ export default function ClassView({
                       {session.date === todayISO() && (
                         <span className="ml-2 rounded-full bg-indigo-100 dark:bg-indigo-900 px-2 py-0.5 text-xs font-semibold text-indigo-700 dark:text-indigo-300">
                           Hoy
+                        </span>
+                      )}
+                      {session.status === 'pending' && (
+                        <span
+                          className="ml-2 inline-block"
+                          title={session.pendingNote ? `Pendiente: ${session.pendingNote}` : 'Queda pendiente'}
+                        >
+                          ⚠️
+                        </span>
+                      )}
+                      {session.status === 'completed' && (
+                        <span
+                          className="ml-2 inline-flex h-4 w-4 items-center justify-center rounded-full bg-blue-600 text-[10px] font-bold text-white align-middle"
+                          title="Clase finalizada"
+                        >
+                          ✓
                         </span>
                       )}
                     </p>

@@ -1,9 +1,21 @@
-import { useMemo, useState } from 'react'
+import { lazy, Suspense, useMemo, useState } from 'react'
 import type { ClassSession, IncidentTypeId, SchoolClass } from '../types'
 import { INCIDENT_TYPES, MAX_INCIDENT_LEVEL } from '../types'
-import { addCleanupHelp, addParticipation, incrementIncident, resetIncident, setStudentName, todayISO } from '../lib/storage'
+import {
+  addCleanupHelp,
+  addParticipation,
+  incrementIncident,
+  resetIncident,
+  setComment,
+  setSessionStatus,
+  setStudentName,
+  setTopic,
+  todayISO,
+} from '../lib/storage'
 import { formatDate } from '../lib/dates'
 import PrintableSession from './PrintableSession'
+
+const PendingNoteModal = lazy(() => import('./PendingNoteModal'))
 
 export default function SessionView({
   cls,
@@ -21,6 +33,7 @@ export default function SessionView({
   const [editingNumber, setEditingNumber] = useState<number | null>(null)
   const [nameDraft, setNameDraft] = useState('')
   const [onlyWithIncidents, setOnlyWithIncidents] = useState(false)
+  const [showPendingNote, setShowPendingNote] = useState(false)
 
   const students = useMemo(() => Array.from({ length: cls.studentCount }, (_, i) => i + 1), [cls.studentCount])
 
@@ -49,6 +62,39 @@ export default function SessionView({
     const updated = addCleanupHelp(session.id, studentNumber, delta)
     if (updated) setSession(updated)
     onSessionChanged()
+  }
+
+  function handleCommentChange(studentNumber: number, value: string) {
+    setSession((prev) => ({ ...prev, comments: { ...prev.comments, [studentNumber]: value } }))
+  }
+
+  function handleCommentBlur(studentNumber: number) {
+    const updated = setComment(session.id, studentNumber, session.comments[studentNumber] ?? '')
+    if (updated) setSession(updated)
+    onSessionChanged()
+  }
+
+  function handleTopicChange(value: string) {
+    setSession((prev) => ({ ...prev, topic: value }))
+  }
+
+  function handleTopicBlur() {
+    const updated = setTopic(session.id, session.topic ?? '')
+    if (updated) setSession(updated)
+    onSessionChanged()
+  }
+
+  function handleFinalize() {
+    setSessionStatus(session.id, 'completed')
+    onSessionChanged()
+    onBack()
+  }
+
+  function handleSavePendingNote(note: string) {
+    setSessionStatus(session.id, 'pending', note)
+    setShowPendingNote(false)
+    onSessionChanged()
+    onBack()
   }
 
   function handlePrint() {
@@ -115,6 +161,18 @@ export default function SessionView({
           </button>
         </div>
       </header>
+
+      <label className="mb-4 flex flex-col gap-1 text-sm font-medium text-slate-700 dark:text-slate-300">
+        📖 Tema de la clase
+        <input
+          type="text"
+          value={session.topic ?? ''}
+          onChange={(e) => handleTopicChange(e.target.value)}
+          onBlur={handleTopicBlur}
+          placeholder="Ej. Ecuaciones de primer grado"
+          className="rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 px-3 py-2 text-base text-slate-900 dark:text-slate-100 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 dark:focus:ring-indigo-900"
+        />
+      </label>
 
       <label className="mb-4 flex items-center gap-2 text-sm text-slate-600 dark:text-slate-300">
         <input
@@ -270,6 +328,20 @@ export default function SessionView({
                   +
                 </button>
               </div>
+
+              <div className="border-t border-slate-100 dark:border-slate-700 pt-2">
+                <label className="flex flex-col gap-1 text-xs font-medium text-slate-500 dark:text-slate-400">
+                  💬 Comentario
+                  <textarea
+                    value={session.comments[n] ?? ''}
+                    onChange={(e) => handleCommentChange(n, e.target.value)}
+                    onBlur={() => handleCommentBlur(n)}
+                    placeholder="Observación para el PDF (opcional)"
+                    rows={2}
+                    className="w-full resize-none rounded-md border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-900 px-2 py-1.5 text-sm text-slate-900 dark:text-slate-100 outline-none focus:border-indigo-500"
+                  />
+                </label>
+              </div>
             </li>
           )
         })}
@@ -280,8 +352,35 @@ export default function SessionView({
           Nadie tiene incidencias registradas todavía. 🎉
         </div>
       )}
+
+      <div className="mt-8 grid grid-cols-2 gap-3 border-t border-slate-200 dark:border-slate-700 pt-6">
+        <button
+          type="button"
+          onClick={() => setShowPendingNote(true)}
+          className="rounded-xl border-2 border-amber-400 px-4 py-3 text-sm font-semibold text-amber-700 dark:text-amber-400 hover:bg-amber-50 dark:hover:bg-amber-950/40"
+        >
+          ⚠️ Queda pendiente
+        </button>
+        <button
+          type="button"
+          onClick={handleFinalize}
+          className="rounded-xl bg-blue-600 px-4 py-3 text-sm font-semibold text-white hover:bg-blue-700 active:bg-blue-800"
+        >
+          ✅ Finalizar clase
+        </button>
+      </div>
     </div>
     <PrintableSession cls={cls} session={session} studentNames={studentNames} />
+
+    {showPendingNote && (
+      <Suspense fallback={null}>
+        <PendingNoteModal
+          initialNote={session.pendingNote ?? ''}
+          onClose={() => setShowPendingNote(false)}
+          onSave={handleSavePendingNote}
+        />
+      </Suspense>
+    )}
     </>
   )
 }

@@ -19,10 +19,12 @@ export default function PrintableSession({
 }) {
   const students = Array.from({ length: cls.studentCount }, (_, i) => i + 1)
   const studentsWithIncidents = students.filter((n) => Object.keys(session.records[n] ?? {}).length > 0)
+  const studentsWithComments = students.filter((n) => (session.comments[n] ?? '').trim())
 
   return (
     <div className="hidden print:block print:p-4 text-black">
       <h1 className="text-lg font-bold">Rúbrica de comportamiento y participación</h1>
+      {session.topic && <p className="text-sm italic">Tema: {session.topic}</p>}
       <p className="mb-1 text-sm">
         {cls.name} · {cls.grade} · {formatDateLong(session.date)}
       </p>
@@ -95,6 +97,25 @@ export default function PrintableSession({
           </ul>
         )}
       </div>
+
+      {studentsWithComments.length > 0 && (
+        <div className="mt-4">
+          <h2 className="text-sm font-bold">Comentarios</h2>
+          <table className="mt-1 w-full border-collapse text-[10px]">
+            <tbody>
+              {studentsWithComments.map((n) => (
+                <tr key={n}>
+                  <td className="border border-black px-1.5 py-1 align-top font-bold w-10">
+                    {n}
+                    {studentNames[n] ? ` · ${studentNames[n]}` : ''}
+                  </td>
+                  <td className="border border-black px-1.5 py-1 text-left">{session.comments[n]}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
 
       <p className="mt-6 text-xs">Firma del docente: ______________________________</p>
     </div>

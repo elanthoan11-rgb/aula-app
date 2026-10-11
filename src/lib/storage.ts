@@ -99,6 +99,7 @@ export function addStudentToClass(classId: string, input: { name: string; number
           records: shiftKeysFrom(s.records, insertAt),
           participation: shiftKeysFrom(s.participation, insertAt),
           cleanupHelp: shiftKeysFrom(s.cleanupHelp, insertAt),
+          comments: shiftKeysFrom(s.comments, insertAt),
         }
       : s,
   )
@@ -138,6 +139,7 @@ function normalizeSession(session: ClassSession): ClassSession {
     records: normalizeRecords(session.records),
     participation: session.participation ?? {},
     cleanupHelp: session.cleanupHelp ?? {},
+    comments: session.comments ?? {},
   }
 }
 
@@ -172,6 +174,7 @@ export function getOrCreateTodaySession(classId: string): ClassSession {
     records: {},
     participation: {},
     cleanupHelp: {},
+    comments: {},
   }
   saveSessions([...getSessions(), session])
   return session
@@ -258,6 +261,55 @@ export function addCleanupHelp(sessionId: string, studentNumber: number, delta: 
   }
 
   const updated: ClassSession = { ...session, cleanupHelp }
+  sessions[idx] = updated
+  saveSessions(sessions)
+  return updated
+}
+
+export function setComment(sessionId: string, studentNumber: number, comment: string): ClassSession | undefined {
+  const sessions = getSessions()
+  const idx = sessions.findIndex((s) => s.id === sessionId)
+  if (idx === -1) return undefined
+
+  const session = sessions[idx]
+  const comments = { ...session.comments }
+  if (comment.trim()) {
+    comments[studentNumber] = comment.trim()
+  } else {
+    delete comments[studentNumber]
+  }
+
+  const updated: ClassSession = { ...session, comments }
+  sessions[idx] = updated
+  saveSessions(sessions)
+  return updated
+}
+
+export function setTopic(sessionId: string, topic: string): ClassSession | undefined {
+  const sessions = getSessions()
+  const idx = sessions.findIndex((s) => s.id === sessionId)
+  if (idx === -1) return undefined
+
+  const updated: ClassSession = { ...sessions[idx], topic: topic.trim() || undefined }
+  sessions[idx] = updated
+  saveSessions(sessions)
+  return updated
+}
+
+export function setSessionStatus(
+  sessionId: string,
+  status: 'pending' | 'completed',
+  pendingNote?: string,
+): ClassSession | undefined {
+  const sessions = getSessions()
+  const idx = sessions.findIndex((s) => s.id === sessionId)
+  if (idx === -1) return undefined
+
+  const updated: ClassSession = {
+    ...sessions[idx],
+    status,
+    pendingNote: status === 'pending' ? pendingNote?.trim() : undefined,
+  }
   sessions[idx] = updated
   saveSessions(sessions)
   return updated
